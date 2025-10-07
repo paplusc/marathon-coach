@@ -3,7 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Marathon Coach 🏃‍♂️</title>
+  <title>Marathon Coach</title>
+    <link rel="icon" type="image/png" sizes="32x32" href="marathon.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="marathon (1).png">
+    <link rel="apple-touch-icon" href="marathon (1).png">
+    <link rel="manifest" href="/site.webmanifest">
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
   <style>
@@ -50,6 +54,8 @@
         text-align: left;
         border-bottom: 1px solid #f3f4f6; /* light gray */
         vertical-align: top;
+        /* Ensure cells are clickable */
+        cursor: pointer; 
     }
     .plan-table th {
         background-color: #f9fafb; /* bg-gray-50 */
@@ -131,6 +137,7 @@
     // ---------------------------
     const APP_STATE = {
       plan: JSON.parse(localStorage.getItem('trainingPlan') || '{}'),
+      // NOTE: Added placeholder fields for demonstration purposes
       loggedWorkouts: JSON.parse(localStorage.getItem('loggedWorkouts') || '{}'),
       startDate: localStorage.getItem('planStartDate') || null
     };
@@ -149,6 +156,15 @@
         return result;
     };
     
+    // Helper to calculate Pace in mm:ss format
+    function calculatePace(distanceKm, timeMinutes) {
+        if (distanceKm <= 0 || timeMinutes <= 0) return 'N/A';
+        const paceDecimal = timeMinutes / distanceKm; // e.g., 5.5 min/km
+        const minutes = Math.floor(paceDecimal);
+        const seconds = Math.round((paceDecimal - minutes) * 60);
+        return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')} /km`;
+    }
+
     // Helper to clear the plan
     function clearPlan() {
         if (confirm("Are you sure you want to clear the entire training plan? This cannot be undone.")) {
@@ -194,6 +210,7 @@
         if (view === 'dashboard') renderDashboard();
         else if (view === 'plan') renderPlanView();
         else if (view === 'log') renderLogView();
+        else if (view === 'log-detail') renderLogDetailView(date);
         else if (view === 'log-workout') renderLogWorkoutView(date);
         else if (view === 'import') renderImportView();
         app.classList.remove("opacity-0");
@@ -206,7 +223,8 @@
     // ---------------------------
     function showModal(title, message) {
       document.getElementById('modal-title').textContent = title;
-      document.getElementById('modal-message').textContent = message;
+      // NOTE: Using innerHTML here because the message string now contains <strong> tags
+      document.getElementById('modal-message').innerHTML = message;
       document.getElementById('message-modal').classList.remove('hidden');
     }
 
@@ -221,7 +239,7 @@
     }
 
     // ---------------------------
-    // Dashboard
+    // Dashboard (UPDATED with Lucide Icons)
     // ---------------------------
     function renderDashboard() {
       const today = new Date();
@@ -231,6 +249,7 @@
       const hasPlan = Object.keys(APP_STATE.plan).length > 0;
 
       let planDetails = { activity: "No Plan Loaded", week: "N/A" };
+      let statusIconHtml = '';
       let action = `<button onclick="showView('import', null, document.getElementById('nav-import'))" class="flex justify-center items-center gap-2 w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold py-3 rounded-xl shadow">
           <i data-lucide='upload'></i> Import Plan
         </button>`;
@@ -239,16 +258,30 @@
         planDetails = APP_STATE.plan[todayStr] || { activity: "Rest Day", week: "N/A" };
         const logged = APP_STATE.loggedWorkouts[todayStr];
         
-        // Use the new view to open the log form for today
+        // Determine the Status Icon
+        if (logged) {
+            // Plan Loaded & Logged: Checkmark/Completed
+            statusIconHtml = `<i data-lucide="check-circle" class="w-8 h-8 text-green-500"></i>`;
+        }
+
+        // Determine the action button
         action = logged ? 
-          `<button onclick="showView('log-workout', '${todayStr}')" class="flex justify-center items-center gap-2 w-full bg-green-500 hover:bg-green-600 text-white font-semibold py-3 rounded-xl shadow">
-            <i data-lucide='eye'></i> View Log
+          `<button onclick="showView('log-detail', '${todayStr}')" class="flex justify-center items-center gap-2 w-full bg-green-500 hover:bg-green-600 text-white font-semibold py-3 rounded-xl shadow">
+            <i data-lucide='eye'></i> View Log Details
           </button>`
           :
           `<button onclick="showView('log-workout', '${todayStr}')" class="flex justify-center items-center gap-2 w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-xl shadow">
             <i data-lucide='edit-3'></i> Log Workout
           </button>`;
+      } else {
+        // No Plan: Warning Triangle
+        statusIconHtml = `<i data-lucide="alert-triangle" class="w-8 h-8 text-orange-500"></i>`;
+        // Action is already set to Import Plan
       }
+      
+      // Combine icon into the display span
+      const statusIcon = `<span class="text-7xl">${statusIconHtml}</span>`;
+
 
       document.getElementById('app').innerHTML = `
         <div class="bg-white/90 backdrop-blur p-8 rounded-2xl shadow-xl text-center transition-all duration-300 hover:-translate-y-1">
@@ -259,7 +292,7 @@
           <div class="border-t border-b border-gray-100 py-6 my-6">
             <p class="text-xl font-semibold text-blue-600 mb-2">${planDetails.week}</p>
             <div class="flex flex-col items-center space-y-2">
-              <span class="text-7xl">${hasPlan ? (APP_STATE.loggedWorkouts[todayStr] ? "✅" : "🏃‍♂️") : "⚠️"}</span>
+              ${statusIcon}
               <p class="text-3xl font-extrabold text-gray-900">${planDetails.activity}</p>
               <p class="text-sm text-gray-500 italic">${hasPlan ? "Let’s crush it today 💥" : "Import a plan to start training!"}</p>
             </div>
@@ -279,8 +312,9 @@
         const loggedData = APP_STATE.loggedWorkouts[dateStr] || {};
         const isEdit = Object.keys(loggedData).length > 0;
         
-        const title = isEdit ? `Edit Log: ${dateStr}` : `Log Workout: ${dateStr}`;
-        const plannedText = planActivity !== "Rest Day" ? `<p class="text-gray-600 text-sm mb-4">Planned: **${planActivity}**</p>` : '';
+        const title = isEdit ? `Edit Log: ${dateStr}` : `   Log: ${dateStr}`;
+        // UPDATED strong tags
+        const plannedText = planActivity !== "Rest Day" ? `<p class="text-gray-600 text-sm mb-4">Planned: <strong>${planActivity}</strong></p>` : '';
         
         document.getElementById('app').innerHTML = `
             <div class="bg-white/90 backdrop-blur p-8 rounded-2xl shadow-xl">
@@ -296,11 +330,25 @@
                                 class="mt-1 block w-full border border-gray-300 rounded-xl py-2 px-3 focus:ring-blue-500 focus:border-blue-500" />
                         </label>
                         <label class="block">
-                            <span class="text-gray-700">Time (minutes):</span>
+                            <span class="text-gray-700">Time (min):</span>
                             <input type="number" step="1" id="log-time" value="${loggedData.time || ''}"
                                 class="mt-1 block w-full border border-gray-300 rounded-xl py-2 px-3 focus:ring-blue-500 focus:border-blue-500" />
                         </label>
                     </div>
+                    
+                    <div class="grid grid-cols-2 gap-4 mb-6">
+                        <label class="block">
+                            <span class="text-gray-700">Avg BPM:</span>
+                            <input type="number" step="1" id="log-hr" value="${loggedData.hr || ''}"
+                                class="mt-1 block w-full border border-gray-300 rounded-xl py-2 px-3 focus:ring-blue-500 focus:border-blue-500" />
+                        </label>
+                        <label class="block">
+                            <span class="text-gray-700">Strava Link (URL):</span>
+                            <input type="text" id="log-strava" value="${loggedData.strava || ''}"
+                                class="mt-1 block w-full border border-gray-300 rounded-xl py-2 px-3 focus:ring-blue-500 focus:border-blue-500" />
+                        </label>
+                    </div>
+
                     <label class="block mb-6">
                         <span class="text-gray-700">Notes:</span>
                         <textarea id="log-notes" rows="3"
@@ -316,9 +364,10 @@
                                 <i data-lucide="trash-2"></i> Delete
                             </button>` : ''}
                     </div>
-                    <button type="button" onclick="showView('dashboard', null, document.getElementById('nav-dashboard'))" class="w-full mt-4 bg-gray-300 hover:bg-gray-400 text-gray-700 font-semibold py-3 rounded-xl transition-all duration-150 flex items-center justify-center gap-2">
-                        <i data-lucide="arrow-left"></i> Back to Dashboard
-                    </button>
+                    ${isEdit ? 
+                        `<button type="button" onclick="showView('log-detail', '${dateStr}')" class="w-full mt-4 bg-yellow-400 hover:bg-yellow-500 text-gray-900 font-semibold py-3 rounded-xl transition-all duration-150 flex items-center justify-center gap-2">
+                            <i data-lucide="eye"></i> View
+                        </button>` : ''}
                 </form>
             </div>
         `;
@@ -330,6 +379,8 @@
     function logWorkout(dateStr) {
         const distance = document.getElementById('log-distance').value;
         const time = document.getElementById('log-time').value;
+        const hr = document.getElementById('log-hr').value;
+        const strava = document.getElementById('log-strava').value;
         const notes = document.getElementById('log-notes').value;
 
         if (!distance && !time && !notes) {
@@ -340,14 +391,18 @@
         APP_STATE.loggedWorkouts[dateStr] = {
             distance: distance ? parseFloat(distance) : 0,
             time: time ? parseInt(time) : 0,
+            hr: hr ? parseInt(hr) : null,
+            strava: strava.trim(),
             notes: notes.trim(),
             date: dateStr,
             plannedActivity: APP_STATE.plan[dateStr]?.activity || 'N/A'
         };
 
         localStorage.setItem('loggedWorkouts', JSON.stringify(APP_STATE.loggedWorkouts));
-        showModal('Success!', `Workout log for **${dateStr}** saved.`);
-        setTimeout(() => showView('dashboard', null, document.getElementById('nav-dashboard')), 1000);
+        // UPDATED strong tags
+        showModal('Success!', `Workout log for <strong>${dateStr}</strong> saved.`);
+        // After save, show the new detail view
+        setTimeout(() => showView('log-detail', dateStr), 1000); 
     }
     
     /**
@@ -357,27 +412,100 @@
         if (confirm(`Are you sure you want to delete the log for ${dateStr}?`)) {
             delete APP_STATE.loggedWorkouts[dateStr];
             localStorage.setItem('loggedWorkouts', JSON.stringify(APP_STATE.loggedWorkouts));
-            showModal('Deleted', `Workout log for **${dateStr}** removed.`);
+            // UPDATED strong tags
             // After deleting, go to the general log view
-            setTimeout(() => showView('log', null, document.getElementById('nav-log')), 1000); 
+            setTimeout(() => showView('log', null, document.getElementById('nav-log')), 700); 
         }
+    }
+
+    // ---------------------------
+    // Log Detail View
+    // ---------------------------
+    function renderLogDetailView(dateStr) {
+        setActiveNav(null); 
+        const log = APP_STATE.loggedWorkouts[dateStr];
+        
+        if (!log) {
+            // If the log doesn't exist, route to the log form instead
+            showView('log-workout', dateStr);
+            return;
+        }
+
+        const distance = log.distance;
+        const time = log.time;
+        const hr = log.hr;
+        const pace = calculatePace(distance, time);
+        const stravaLink = log.strava;
+        const planned = log.plannedActivity;
+
+        const statCard = (icon, label, value, unit, colorClass = 'text-gray-900') => `
+            <div class="flex flex-col items-center p-4 bg-gray-50 rounded-xl shadow-inner border border-gray-100">
+                <i data-lucide="${icon}" class="w-6 h-6 text-blue-500 mb-1"></i>
+                <div class="text-3xl font-extrabold ${colorClass}">${value}</div>
+                <div class="text-sm text-gray-500 uppercase">${label} ${unit}</div>
+            </div>
+        `;
+        
+        const paceHtml = statCard('gauge', 'Pace', pace.split(' ')[0], pace.split(' ')[1] || '', 'text-orange-600');
+        const hrHtml = statCard('heart-plus', 'Average', hr || 'N/A', 'BPM', hr ? 'text-red-500' : 'text-gray-400');
+        
+        const notesHtml = log.notes ? `
+            <div class="bg-blue-50 p-4 rounded-xl shadow-md border border-blue-100 mt-6">
+                <h4 class="font-bold text-blue-700 flex items-center gap-2"><i data-lucide="notebook-text" class="w-5 h-5"></i> Workout Notes</h4>
+                <p class="text-gray-700 mt-2 whitespace-pre-wrap">${log.notes}</p>
+            </div>
+        ` : '';
+
+        const stravaHtml = stravaLink ? `
+            <a href="${stravaLink}" target="_blank" class="flex items-center justify-center gap-2 w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold py-3 rounded-xl shadow transition-all duration-150 mt-6">
+                <i data-lucide="external-link" class="w-5 h-5"></i> View on Strava
+            </a>
+        ` : `
+            <button onclick="showView('log-workout', '${dateStr}')" class="flex items-center justify-center gap-2 w-full bg-gray-300 text-gray-700 font-semibold py-3 rounded-xl transition-all duration-150 mt-6">
+                <i data-lucide="link"></i> Add Strava Link
+            </button>
+        `;
+
+        document.getElementById('app').innerHTML = `
+            <div class="bg-white/90 backdrop-blur p-8 rounded-2xl shadow-2xl w-full">
+                <h2 class="text-3xl font-bold mb-1 text-gray-900">${dateStr}</h2>
+                <p class="text-lg text-gray-600 border-b pb-4 mb-6">Planned: <span class="font-semibold text-blue-600">${planned}</span></p>
+
+                <div class="grid grid-cols-2 gap-4">
+                    ${statCard('map-pin-house', 'Distance', distance.toFixed(1), 'km', 'text-green-600')}
+                    ${statCard('clock', 'Duration', time, 'min', 'text-indigo-600')}
+                    ${paceHtml}
+                    ${hrHtml}
+                </div>
+
+                ${notesHtml}
+
+                <div class="flex flex-col gap-4 mt-8">
+                    ${stravaHtml}
+                    <button onclick="showView('log-workout', '${dateStr}')" class="flex items-center justify-center gap-2 w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-xl shadow-lg transition-all duration-150">
+                        <i data-lucide="edit-3"></i> Edit Log Data
+                    </button>
+                </div>
+            </div>
+        `;
     }
 
 
     // ---------------------------
-    // Log View (UPDATED)
+    // Log View 
     // ---------------------------
     function renderLogView() {
         const logs = APP_STATE.loggedWorkouts;
         // Sort logs by date descending (newest first)
-        const logDates = Object.keys(logs).sort().reverse();
+        const logDates = Object.keys(logs).sort().reverse(); 
+        const todayStr = formatDate(new Date());
         
         let logContent = '';
 
         if (logDates.length === 0) {
             logContent = `
-                <p class="text-gray-600 mb-6">You haven't logged any workouts yet. Time to hit the road!</p>
-                <button onclick="showView('log-workout', '${formatDate(new Date())}')" class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-xl flex items-center gap-2 mx-auto">
+                <p class="text-gray-600 mb-6">You haven't logged any workouts yet.</p>
+                <button onclick="showView('log-workout', '${todayStr}')" class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-xl flex items-center gap-2 mx-auto">
                     <i data-lucide="edit-3"></i> Log Today's Workout
                 </button>
             `;
@@ -397,19 +525,19 @@
                 }
 
                 return `
-                    <div class="log-card bg-white p-5 rounded-xl shadow-lg mb-4 cursor-pointer" onclick="showView('log-workout', '${dateStr}')">
+                    <div class="log-card bg-white p-5 rounded-xl shadow-lg mb-4 cursor-pointer" onclick="showView('log-detail', '${dateStr}')">
                         <div class="flex justify-between items-center mb-3 border-b border-gray-100 pb-2">
                             <h3 class="text-xl font-bold text-gray-900">${dateStr}</h3>
                             <div class="flex items-center gap-3">
                                 ${progressIcon}
                                 <button class="text-blue-500 hover:text-blue-700 flex items-center gap-1 text-sm">
-                                    <i data-lucide="pencil" class="w-4 h-4"></i> Edit
+                                    <i data-lucide="eye" class="w-4 h-4"></i> View
                                 </button>
                             </div>
                         </div>
                         
                         <p class="text-sm text-gray-500 mb-3">
-                            **Planned:** <span class="text-gray-700 font-medium">${planned}</span>
+                            <strong>Planned:</strong> <span class="text-gray-700 font-medium">${planned}</span>
                         </p>
 
                         <div class="flex justify-around bg-gray-50 p-3 rounded-lg border border-gray-100">
@@ -446,7 +574,7 @@
     }
 
     // ---------------------------
-    // Plan View Helpers & Logic (No change, included for completeness)
+    // Plan View Helpers & Logic 
     // ---------------------------
     function groupPlanByWeek() {
         const weeks = {};
@@ -503,15 +631,17 @@
                   const isToday = dayData.date === todayStr;
                   const isLogged = dayData.logged;
                   
-                  let className = 'text-gray-700';
+                  let className = 'text-gray-700 hover:bg-gray-100 transition-colors';
                   if (isToday) {
-                      className = 'font-bold bg-yellow-100 text-gray-900 border-2 border-yellow-400 rounded-lg shadow-sm';
+                      className = 'font-bold bg-yellow-100 text-gray-900 border-2 border-yellow-400 rounded-lg shadow-sm hover:bg-yellow-200 transition-colors';
                   } else if (isLogged) {
-                      className = 'line-through text-green-600 bg-green-50/50';
+                      // Click opens Log Detail View if already logged
+                      className = 'line-through text-green-600 bg-green-50/50 hover:bg-green-100/70 transition-colors';
                   } else if (dayData.activity.toLowerCase().includes('marathon day')) {
-                      className = 'bg-red-500 text-white font-bold rounded-lg shadow-lg';
+                      className = 'bg-red-500 text-white font-bold rounded-lg shadow-lg hover:bg-red-600 transition-colors';
                   }
                   
+                  // **Click opens the Log Workout Form directly for any day**
                   return `<td class="${className}" onclick="showView('log-workout', '${dayData.date}')" style="cursor: pointer;">
                       <div class="text-sm">${dayData.activity}</div>
                       <div class="text-xs text-gray-500 mt-1">${dayData.date.substring(5)}</div>
@@ -527,13 +657,13 @@
           }).join('');
           
           content = `
-              <p class="text-lg text-gray-700 mb-6">Plan started on **${APP_STATE.startDate}**. (${Object.keys(APP_STATE.plan).length} total days)</p>
+              <p class="text-lg text-gray-700 mb-6">Plan started on <strong>${APP_STATE.startDate}</strong>.</p>
 
               <div class="overflow-x-auto bg-white rounded-xl shadow-xl border border-gray-100 mb-6">
                 <table class="min-w-full plan-table divide-y divide-gray-200">
                   <thead>
                     <tr>
-                      <th class="sticky left-0">Week</th>
+                      <th class="left-0">Week</th>
                       <th>Mon</th><th>Tue</th><th>Wed</th><th>Thu</th><th>Fri</th><th>Sat</th><th>Sun</th>
                     </tr>
                   </thead>
@@ -542,6 +672,7 @@
                   </tbody>
                 </table>
               </div>
+              <p class="text-sm text-gray-500 mb-4 mt-2"><strong>Tip:</strong> Click any day to log or edit your workout details.</p>
 
               <div class="flex justify-between items-center gap-4 mt-6">
                 <button onclick="clearPlan()" class="flex items-center gap-2 text-sm text-red-500 hover:text-red-700">
@@ -564,7 +695,7 @@
     }
 
     // ---------------------------
-    // CSV Import Logic (No change, included for completeness)
+    // CSV Import Logic 
     // ---------------------------
     function importPlan() {
       const fileInput = document.getElementById('plan-upload');
@@ -577,11 +708,13 @@
         return;
       }
       if (!startDateStr) {
-        showModal('Error', 'Please select a **Start Date** for your plan.');
+        // UPDATED strong tags
+        showModal('Error', 'Please select a <strong>Start Date</strong> for your plan.');
         return;
       }
       if (!file.name.endsWith('.csv')) {
-        showModal('Error', 'Invalid file type. Please upload a **.csv** file.');
+        // UPDATED strong tags
+        showModal('Error', 'Invalid file type. Please upload a <strong>.csv</strong> file.');
         return;
       }
 
@@ -601,7 +734,8 @@
           localStorage.setItem('trainingPlan', JSON.stringify(newPlan));
           localStorage.setItem('planStartDate', startDateStr);
 
-          showModal('Success! 🎉', `Training plan imported successfully, starting **${startDateStr}**, with **${Object.keys(newPlan).length}** days planned.`);
+          // UPDATED strong tags
+          showModal('Success! 🎉', `Training plan imported successfully, starting <strong>${startDateStr}</strong>, with <strong>${Object.keys(newPlan).length}</strong> days planned.`);
           setTimeout(() => showView('dashboard', null, document.getElementById('nav-dashboard')), 1500);
 
         } catch (e) {
@@ -622,19 +756,19 @@
       const lines = csv.split('\n').filter(line => line.trim() !== '');
       if (lines.length < 2) return plan; 
 
-      const header = lines[0].split(',').map(h => h.trim());
-      const activities = header.slice(1); 
-
+      // Header is ignored since we know the order is Week,Mon,Tue,Wed,Thu,Fri,Sat,Sun
+      
       let currentDay = new Date(startDateStr);
       
+      // Determine the day of the week the plan STARTS ON (0=Sun, 1=Mon... 6=Sat)
       const startDayOfWeekJS = currentDay.getDay(); 
-      const startDayCSVIndex = activities.findIndex(day => day.substring(0, 3) === DAY_NAMES_FULL[startDayOfWeekJS].substring(0, 3));
+      // Adjust JS's Sunday (0) to be last (7) so Mon=1, Sat=6, Sun=7
+      const startDayIndex = startDayOfWeekJS === 0 ? 7 : startDayOfWeekJS;
       
-      if (startDayCSVIndex === -1) {
-          throw new Error('Could not match start date day of week to CSV columns.');
-      }
-      
-      let dayOffsetInPlan = startDayCSVIndex;
+      // The CSV data columns are Mon (index 1) to Sun (index 7).
+      // We need to skip the first (startDayIndex - 1) activities of the first CSV week
+      // to align the first activity with the given start date.
+      let daysToSkipInFirstRow = startDayIndex - 1;
       
       for (let i = 1; i < lines.length; i++) {
         const columns = lines[i].split(',').map(c => c.trim());
@@ -642,12 +776,16 @@
 
         const weekLabel = columns[0];
 
-        for (let j = 0; j < 7; j++) {
-          if (i === 1 && j < dayOffsetInPlan) continue;
+        // Process columns 1 through 7 (Mon through Sun)
+        for (let j = 1; j < 8; j++) {
           
-          const activityIndex = j + 1; 
-          const activity = columns[activityIndex];
+          // Only skip activities in the first data row (i=1) if the skip count is > 0
+          if (i === 1 && daysToSkipInFirstRow > 0) {
+            daysToSkipInFirstRow--;
+            continue;
+          }
           
+          const activity = columns[j];
           const dateStr = formatDate(currentDay);
 
           plan[dateStr] = { 
@@ -655,17 +793,16 @@
             week: weekLabel 
           };
           
+          // Move to the next calendar day
           currentDay = addDays(currentDay, 1);
         }
-        
-        dayOffsetInPlan = 0;
       }
       return plan;
     }
 
 
     // ---------------------------
-    // Import Plan View (No change, included for completeness)
+    // Import Plan View
     // ---------------------------
     function renderImportView() {
       // Set the default to today's date
@@ -679,7 +816,7 @@
           <p class="text-gray-600 mb-4">Upload your marathon training plan CSV and choose a start date.</p>
           
           <p class="text-sm text-gray-500 mb-6 italic border p-3 rounded-lg text-left">
-            **Required CSV Header**: Week,Mon,Tue,Wed,Thu,Fri,Sat,Sun<br>
+            <strong>Required CSV Header</strong>: Week,Mon,Tue,Wed,Thu,Fri,Sat,Sun<br>
             *Example Data Row*: Week 1,Rest,4 km easy,Strength,4×3 min run / 2 min walk,Rest,5 km long run,Cross-train...
           </p>
 
