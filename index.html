@@ -2,65 +2,728 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Marathon Training Coach</title>
-
-  <!-- Tailwind -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Marathon Coach 🏃‍♂️</title>
   <script src="https://cdn.tailwindcss.com"></script>
-
-  <!-- Google Font -->
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
-
-  <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
-
-  <!-- App styles -->
-  <link rel="stylesheet" href="style.css">
+  <style>
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      /* Add padding to the bottom of the body to prevent content from being hidden by the fixed nav */
+      padding-bottom: 5rem; /* Adjust based on nav height */
+    }
+    /* Custom styling for the file input */
+    .file-input-container {
+      position: relative;
+      display: inline-block;
+      width: 100%;
+    }
+    .file-input-label {
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      width: 100%;
+      height: 3rem;
+      background-color: #f3f4f6; /* bg-gray-100 */
+      color: #1f2937; /* text-gray-800 */
+      border: 2px dashed #d1d5db; /* border-gray-300 */
+      border-radius: 0.75rem; /* rounded-xl */
+      transition: background-color 0.15s;
+    }
+    .file-input-label:hover {
+      background-color: #e5e7eb; /* hover:bg-gray-200 */
+    }
+    #plan-upload {
+      opacity: 0;
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      cursor: pointer;
+    }
+    /* Table styles for readability */
+    .plan-table th, .plan-table td {
+        padding: 0.5rem 0.75rem;
+        text-align: left;
+        border-bottom: 1px solid #f3f4f6; /* light gray */
+        vertical-align: top;
+    }
+    .plan-table th {
+        background-color: #f9fafb; /* bg-gray-50 */
+        font-weight: 600;
+        color: #1f2937; /* text-gray-900 */
+    }
+    .plan-table tr:hover {
+        background-color: #f5f5f5;
+    }
+    /* Log View Styles - New fitness look */
+    .log-card {
+        border-left: 5px solid #ef4444; /* red-500 for activity focus */
+        transition: transform 0.15s, box-shadow 0.15s;
+    }
+    .log-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    }
+    /* Bottom Navigation Bar Styles */
+    #bottom-nav {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      z-index: 50;
+    }
+    .nav-button.active {
+      color: #3b82f6; /* blue-500 */
+    }
+  </style>
 </head>
-<body class="bg-gradient-to-br from-blue-50 via-orange-50 to-white min-h-screen font-inter">
 
-  <div class="max-w-4xl mx-auto p-4 md:p-6">
+<body class="bg-gradient-to-br from-blue-50 via-orange-50 to-white min-h-screen flex flex-col">
 
-    <!-- Header -->
-    <header class="mb-6 pb-4 border-b border-gray-200 flex justify-between items-center">
-      <div class="flex items-center gap-3">
-        <i data-lucide="activity" class="w-8 h-8 text-orange-500"></i>
-        <h1 class="text-3xl font-extrabold text-gray-900 tracking-tight">Marathon Coach</h1>
-        <span class="inline-block ml-2 text-sm text-gray-500">— Train. Log. Improve.</span>
-      </div>
-
-      <div class="flex items-center gap-3">
-        <button id="view-plan-button" onclick="showView('plan')" class="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:opacity-95 text-white text-sm font-semibold py-2 px-4 rounded-lg shadow-md transition duration-150 ease-in-out">
-          <i data-lucide="calendar-days" class="w-4 h-4"></i>
-          <span id="view-plan-button-text">View Full Plan</span>
-        </button>
-      </div>
-    </header>
-
-    <!-- Main container where views render -->
-    <div id="view-container"></div>
-
-    <!-- Modal -->
-    <div id="message-modal" class="hidden fixed inset-0 bg-gray-800 bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div class="bg-white p-6 rounded-xl shadow-2xl max-w-sm w-full">
-        <h3 id="modal-title" class="text-xl font-bold mb-3 text-gray-900"></h3>
-        <p id="modal-message" class="text-gray-700 mb-4"></p>
-        <button id="modal-close-button" onclick="closeModal()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded-lg transition duration-150">
-          Close
-        </button>
-      </div>
+  <header class="flex items-center justify-between px-6 py-4 bg-white/70 backdrop-blur-md shadow-md">
+    <div class="flex items-center space-x-2">
+      <i data-lucide="activity" class="w-6 h-6 text-orange-500"></i>
+      <h1 class="text-2xl font-extrabold text-gray-900 tracking-tight">Marathon Coach</h1>
     </div>
+  </header>
 
+  <main id="app" class="flex-grow p-6 md:p-10 max-w-3xl mx-auto w-full"></main>
+
+  <nav id="bottom-nav" class="bg-white/90 backdrop-blur shadow-2xl border-t border-gray-100">
+    <div class="flex justify-around items-center h-20 max-w-3xl mx-auto">
+      <button id="nav-dashboard" onclick="showView('dashboard', null, this)" class="nav-button flex flex-col items-center p-2 text-gray-500 hover:text-blue-600 active">
+        <i data-lucide="home" class="w-6 h-6"></i>
+        <span class="text-xs mt-1">Dashboard</span>
+      </button>
+      <button id="nav-plan" onclick="showView('plan', null, this)" class="nav-button flex flex-col items-center p-2 text-gray-500 hover:text-blue-600">
+        <i data-lucide="calendar-days" class="w-6 h-6"></i>
+        <span class="text-xs mt-1">Plan</span>
+      </button>
+      <button id="nav-log" onclick="showView('log', null, this)" class="nav-button flex flex-col items-center p-2 text-gray-500 hover:text-blue-600">
+        <i data-lucide="list-checks" class="w-6 h-6"></i>
+        <span class="text-xs mt-1">Log</span>
+      </button>
+      <button id="nav-import" onclick="showView('import', null, this)" class="nav-button flex flex-col items-center p-2 text-gray-500 hover:text-blue-600">
+        <i data-lucide="upload" class="w-6 h-6"></i>
+        <span class="text-xs mt-1">Import</span>
+      </button>
+    </div>
+  </nav>
+
+  <div id="message-modal" class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+    <div class="bg-white rounded-2xl p-6 w-11/12 max-w-md text-center shadow-xl border border-gray-100">
+      <h2 id="modal-title" class="text-xl font-semibold mb-3 text-gray-900"></h2>
+      <p id="modal-message" class="text-gray-600 mb-4"></p>
+      <button id="modal-close-button" onclick="closeModal()"
+        class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded-xl shadow transition-all duration-150">
+        Close
+      </button>
+    </div>
   </div>
 
-  <!-- App script -->
-  <script src="app.js"></script>
-
   <script>
-    // Initialize lucide icons after DOM is ready and after app.init runs
-    window.addEventListener('load', () => {
-      // lucide.createIcons will be called inside app.init and showView where appropriate
-    });
+    // ---------------------------
+    // Global App State
+    // ---------------------------
+    const APP_STATE = {
+      plan: JSON.parse(localStorage.getItem('trainingPlan') || '{}'),
+      loggedWorkouts: JSON.parse(localStorage.getItem('loggedWorkouts') || '{}'),
+      startDate: localStorage.getItem('planStartDate') || null
+    };
+
+    // ---------------------------
+    // Helpers
+    // ---------------------------
+    const formatDate = d => new Date(d).toISOString().split('T')[0];
+    const DAY_NAMES_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    const DAY_NAMES_FULL = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+    
+    // Date utility to add days
+    const addDays = (date, days) => {
+        const result = new Date(date);
+        result.setDate(result.getDate() + days);
+        return result;
+    };
+    
+    // Helper to clear the plan
+    function clearPlan() {
+        if (confirm("Are you sure you want to clear the entire training plan? This cannot be undone.")) {
+            APP_STATE.plan = {};
+            APP_STATE.startDate = null;
+            localStorage.removeItem('trainingPlan');
+            localStorage.removeItem('planStartDate');
+            showModal('Plan Cleared', 'Your training plan has been removed.');
+            showView('dashboard');
+        }
+    }
+
+    // ---------------------------
+    // Navigation & View Switcher
+    // ---------------------------
+    function setActiveNav(activeButton) {
+        document.querySelectorAll('.nav-button').forEach(btn => {
+            btn.classList.remove('active', 'text-blue-600');
+            btn.classList.add('text-gray-500');
+        });
+        if (activeButton) {
+            activeButton.classList.add('active', 'text-blue-600');
+            activeButton.classList.remove('text-gray-500');
+        }
+    }
+
+    function showView(view, date = null, navButton = null) {
+      const app = document.getElementById('app');
+      app.classList.add("opacity-0");
+      
+      // Handle setting active nav button
+      if (navButton) {
+        setActiveNav(navButton);
+      } else if (view === 'dashboard' || view === 'plan' || view === 'log' || view === 'import') {
+        setActiveNav(document.getElementById(`nav-${view}`));
+      } else {
+        // Clear active state for forms/sub-views
+        setActiveNav(null);
+      }
+
+
+      setTimeout(() => {
+        if (view === 'dashboard') renderDashboard();
+        else if (view === 'plan') renderPlanView();
+        else if (view === 'log') renderLogView();
+        else if (view === 'log-workout') renderLogWorkoutView(date);
+        else if (view === 'import') renderImportView();
+        app.classList.remove("opacity-0");
+        lucide.createIcons(); // refresh icons
+      }, 150);
+    }
+
+    // ---------------------------
+    // Modal Helpers
+    // ---------------------------
+    function showModal(title, message) {
+      document.getElementById('modal-title').textContent = title;
+      document.getElementById('modal-message').textContent = message;
+      document.getElementById('message-modal').classList.remove('hidden');
+    }
+
+    function closeModal() {
+      const modal = document.getElementById('message-modal');
+      modal.classList.add('hidden');
+      const closeButton = document.getElementById('modal-close-button');
+      closeButton.textContent = "Close";
+      closeButton.onclick = closeModal;
+      const tempCancel = document.getElementById('modal-cancel-button');
+      if (tempCancel) tempCancel.remove();
+    }
+
+    // ---------------------------
+    // Dashboard
+    // ---------------------------
+    function renderDashboard() {
+      const today = new Date();
+      const todayStr = formatDate(today);
+      const weekday = DAY_NAMES_FULL[today.getDay()];
+
+      const hasPlan = Object.keys(APP_STATE.plan).length > 0;
+
+      let planDetails = { activity: "No Plan Loaded", week: "N/A" };
+      let action = `<button onclick="showView('import', null, document.getElementById('nav-import'))" class="flex justify-center items-center gap-2 w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold py-3 rounded-xl shadow">
+          <i data-lucide='upload'></i> Import Plan
+        </button>`;
+
+      if (hasPlan) {
+        planDetails = APP_STATE.plan[todayStr] || { activity: "Rest Day", week: "N/A" };
+        const logged = APP_STATE.loggedWorkouts[todayStr];
+        
+        // Use the new view to open the log form for today
+        action = logged ? 
+          `<button onclick="showView('log-workout', '${todayStr}')" class="flex justify-center items-center gap-2 w-full bg-green-500 hover:bg-green-600 text-white font-semibold py-3 rounded-xl shadow">
+            <i data-lucide='eye'></i> View Log
+          </button>`
+          :
+          `<button onclick="showView('log-workout', '${todayStr}')" class="flex justify-center items-center gap-2 w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-xl shadow">
+            <i data-lucide='edit-3'></i> Log Workout
+          </button>`;
+      }
+
+      document.getElementById('app').innerHTML = `
+        <div class="bg-white/90 backdrop-blur p-8 rounded-2xl shadow-xl text-center transition-all duration-300 hover:-translate-y-1">
+          <h2 class="text-3xl font-bold text-gray-900 mb-2 flex justify-center items-center gap-2">
+            <i data-lucide="sun" class="w-6 h-6 text-orange-500"></i>${weekday}
+          </h2>
+          <p class="text-lg text-gray-500">${todayStr}</p>
+          <div class="border-t border-b border-gray-100 py-6 my-6">
+            <p class="text-xl font-semibold text-blue-600 mb-2">${planDetails.week}</p>
+            <div class="flex flex-col items-center space-y-2">
+              <span class="text-7xl">${hasPlan ? (APP_STATE.loggedWorkouts[todayStr] ? "✅" : "🏃‍♂️") : "⚠️"}</span>
+              <p class="text-3xl font-extrabold text-gray-900">${planDetails.activity}</p>
+              <p class="text-sm text-gray-500 italic">${hasPlan ? "Let’s crush it today 💥" : "Import a plan to start training!"}</p>
+            </div>
+          </div>
+          ${action}
+        </div>`;
+    }
+
+    // ---------------------------
+    // Log Workout Form View & Logic
+    // ---------------------------
+    function renderLogWorkoutView(dateStr) {
+        // Ensures only this view is highlighted if accessed from dashboard/plan table
+        setActiveNav(null); 
+        
+        const planActivity = APP_STATE.plan[dateStr]?.activity || "No Plan Activity";
+        const loggedData = APP_STATE.loggedWorkouts[dateStr] || {};
+        const isEdit = Object.keys(loggedData).length > 0;
+        
+        const title = isEdit ? `Edit Log: ${dateStr}` : `Log Workout: ${dateStr}`;
+        const plannedText = planActivity !== "Rest Day" ? `<p class="text-gray-600 text-sm mb-4">Planned: **${planActivity}**</p>` : '';
+        
+        document.getElementById('app').innerHTML = `
+            <div class="bg-white/90 backdrop-blur p-8 rounded-2xl shadow-xl">
+                <h2 class="text-2xl font-bold mb-2 flex justify-center items-center gap-2">
+                    <i data-lucide="edit-3" class="w-6 h-6 text-blue-600"></i> ${title}
+                </h2>
+                ${plannedText}
+                <form id="log-form" onsubmit="event.preventDefault(); logWorkout('${dateStr}');">
+                    <div class="grid grid-cols-2 gap-4 mb-4">
+                        <label class="block">
+                            <span class="text-gray-700">Distance (km):</span>
+                            <input type="number" step="0.01" id="log-distance" value="${loggedData.distance || ''}"
+                                class="mt-1 block w-full border border-gray-300 rounded-xl py-2 px-3 focus:ring-blue-500 focus:border-blue-500" />
+                        </label>
+                        <label class="block">
+                            <span class="text-gray-700">Time (minutes):</span>
+                            <input type="number" step="1" id="log-time" value="${loggedData.time || ''}"
+                                class="mt-1 block w-full border border-gray-300 rounded-xl py-2 px-3 focus:ring-blue-500 focus:border-blue-500" />
+                        </label>
+                    </div>
+                    <label class="block mb-6">
+                        <span class="text-gray-700">Notes:</span>
+                        <textarea id="log-notes" rows="3"
+                            class="mt-1 block w-full border border-gray-300 rounded-xl py-2 px-3 focus:ring-blue-500 focus:border-blue-500">${loggedData.notes || ''}</textarea>
+                    </label>
+                    
+                    <div class="flex flex-col md:flex-row gap-4">
+                        <button type="submit" class="flex-1 bg-green-600 hover:bg-green-700 text-white font-semibold py-3 rounded-xl shadow transition-all duration-150 flex items-center justify-center gap-2">
+                            <i data-lucide="save"></i> ${isEdit ? 'Update Log' : 'Save Log'}
+                        </button>
+                        ${isEdit ? 
+                            `<button type="button" onclick="deleteLog('${dateStr}')" class="md:w-auto bg-red-500 hover:bg-red-600 text-white font-semibold py-3 px-6 rounded-xl shadow transition-all duration-150 flex items-center justify-center gap-2">
+                                <i data-lucide="trash-2"></i> Delete
+                            </button>` : ''}
+                    </div>
+                    <button type="button" onclick="showView('dashboard', null, document.getElementById('nav-dashboard'))" class="w-full mt-4 bg-gray-300 hover:bg-gray-400 text-gray-700 font-semibold py-3 rounded-xl transition-all duration-150 flex items-center justify-center gap-2">
+                        <i data-lucide="arrow-left"></i> Back to Dashboard
+                    </button>
+                </form>
+            </div>
+        `;
+    }
+
+    /**
+     * Saves the workout log data.
+     */
+    function logWorkout(dateStr) {
+        const distance = document.getElementById('log-distance').value;
+        const time = document.getElementById('log-time').value;
+        const notes = document.getElementById('log-notes').value;
+
+        if (!distance && !time && !notes) {
+             showModal('Validation Error', 'Please enter at least a distance, time, or notes to save the log.');
+             return;
+        }
+
+        APP_STATE.loggedWorkouts[dateStr] = {
+            distance: distance ? parseFloat(distance) : 0,
+            time: time ? parseInt(time) : 0,
+            notes: notes.trim(),
+            date: dateStr,
+            plannedActivity: APP_STATE.plan[dateStr]?.activity || 'N/A'
+        };
+
+        localStorage.setItem('loggedWorkouts', JSON.stringify(APP_STATE.loggedWorkouts));
+        showModal('Success!', `Workout log for **${dateStr}** saved.`);
+        setTimeout(() => showView('dashboard', null, document.getElementById('nav-dashboard')), 1000);
+    }
+    
+    /**
+     * Deletes a workout log entry.
+     */
+    function deleteLog(dateStr) {
+        if (confirm(`Are you sure you want to delete the log for ${dateStr}?`)) {
+            delete APP_STATE.loggedWorkouts[dateStr];
+            localStorage.setItem('loggedWorkouts', JSON.stringify(APP_STATE.loggedWorkouts));
+            showModal('Deleted', `Workout log for **${dateStr}** removed.`);
+            // After deleting, go to the general log view
+            setTimeout(() => showView('log', null, document.getElementById('nav-log')), 1000); 
+        }
+    }
+
+
+    // ---------------------------
+    // Log View (UPDATED)
+    // ---------------------------
+    function renderLogView() {
+        const logs = APP_STATE.loggedWorkouts;
+        // Sort logs by date descending (newest first)
+        const logDates = Object.keys(logs).sort().reverse();
+        
+        let logContent = '';
+
+        if (logDates.length === 0) {
+            logContent = `
+                <p class="text-gray-600 mb-6">You haven't logged any workouts yet. Time to hit the road!</p>
+                <button onclick="showView('log-workout', '${formatDate(new Date())}')" class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-xl flex items-center gap-2 mx-auto">
+                    <i data-lucide="edit-3"></i> Log Today's Workout
+                </button>
+            `;
+        } else {
+            const listItems = logDates.map(dateStr => {
+                const log = logs[dateStr];
+                const planned = log.plannedActivity;
+                const distance = log.distance;
+                const time = log.time;
+                
+                // Determine the icon and color based on logged data
+                let progressIcon = '<i data-lucide="check-circle" class="w-5 h-5 text-green-500"></i>';
+                if (distance == 0 && time == 0 && log.notes === '') {
+                    progressIcon = '<i data-lucide="alert-triangle" class="w-5 h-5 text-yellow-500"></i>';
+                } else if (planned.toLowerCase().includes('rest') && (distance > 0 || time > 0)) {
+                     progressIcon = '<i data-lucide="zap" class="w-5 h-5 text-red-500"></i>'; // Did a workout on a rest day
+                }
+
+                return `
+                    <div class="log-card bg-white p-5 rounded-xl shadow-lg mb-4 cursor-pointer" onclick="showView('log-workout', '${dateStr}')">
+                        <div class="flex justify-between items-center mb-3 border-b border-gray-100 pb-2">
+                            <h3 class="text-xl font-bold text-gray-900">${dateStr}</h3>
+                            <div class="flex items-center gap-3">
+                                ${progressIcon}
+                                <button class="text-blue-500 hover:text-blue-700 flex items-center gap-1 text-sm">
+                                    <i data-lucide="pencil" class="w-4 h-4"></i> Edit
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <p class="text-sm text-gray-500 mb-3">
+                            **Planned:** <span class="text-gray-700 font-medium">${planned}</span>
+                        </p>
+
+                        <div class="flex justify-around bg-gray-50 p-3 rounded-lg border border-gray-100">
+                            <div class="text-center">
+                                <span class="text-2xl font-extrabold text-orange-600">${distance.toFixed(1)}</span>
+                                <span class="text-sm text-orange-600"> km</span>
+                                <div class="text-xs text-gray-500 uppercase mt-1">Distance</div>
+                            </div>
+                            <div class="w-px bg-gray-200 mx-2"></div>
+                            <div class="text-center">
+                                <span class="text-2xl font-extrabold text-orange-600">${time}</span>
+                                <span class="text-sm text-orange-600"> min</span>
+                                <div class="text-xs text-gray-500 uppercase mt-1">Duration</div>
+                            </div>
+                        </div>
+
+                        ${log.notes ? `<p class="text-sm text-gray-600 mt-3 p-2 bg-blue-50 rounded-md border border-blue-100">
+                            <span class="font-semibold text-blue-700">Notes:</span> ${log.notes}</p>` : ''}
+                    </div>
+                `;
+            }).join('');
+
+            logContent = `<div class="text-left max-h-[70vh] overflow-y-auto pr-2">${listItems}</div>`;
+        }
+
+        document.getElementById('app').innerHTML = `
+            <div class="bg-white/90 backdrop-blur p-8 rounded-2xl shadow-xl w-full text-center">
+                <h2 class="text-2xl font-bold mb-6 flex justify-center items-center gap-2 text-gray-900">
+                    <i data-lucide="list-checks" class="w-6 h-6 text-orange-500"></i> Workout Log
+                </h2>
+                ${logContent}
+            </div>
+        `;
+    }
+
+    // ---------------------------
+    // Plan View Helpers & Logic (No change, included for completeness)
+    // ---------------------------
+    function groupPlanByWeek() {
+        const weeks = {};
+        const sortedDates = Object.keys(APP_STATE.plan).sort();
+
+        sortedDates.forEach(dateStr => {
+            const planItem = APP_STATE.plan[dateStr];
+            const date = new Date(dateStr);
+            const dayOfWeek = DAY_NAMES_SHORT[date.getDay()]; 
+            
+            const weekKey = planItem.week || 'No Week';
+
+            if (!weeks[weekKey]) {
+                weeks[weekKey] = {
+                    startDate: dateStr,
+                    days: {}
+                };
+            }
+            
+            weeks[weekKey].days[dayOfWeek] = { 
+                activity: planItem.activity, 
+                date: dateStr,
+                logged: APP_STATE.loggedWorkouts[dateStr] ? true : false
+            };
+        });
+        
+        return weeks;
+    }
+
+    function renderPlanView() {
+      const hasPlan = Object.keys(APP_STATE.plan).length > 0;
+      let content = '';
+
+      if (!hasPlan) {
+          content = `
+              <p class="text-gray-600 mb-6">No plan loaded yet. Import one to see your schedule.</p>
+              <button onclick="showView('import', null, document.getElementById('nav-import'))" class="bg-orange-500 hover:bg-orange-600 text-white py-2 px-4 rounded-xl flex items-center gap-2 mx-auto">
+                <i data-lucide="upload-cloud"></i> Import Plan
+              </button>
+          `;
+      } else {
+          const weeks = groupPlanByWeek();
+          const todayStr = formatDate(new Date());
+          const headerDays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+          const tableRows = Object.keys(weeks).map(weekKey => {
+              const weekData = weeks[weekKey];
+              const dayCells = headerDays.map(dayShort => {
+                  const dayData = weekData.days[dayShort];
+                  
+                  if (!dayData) {
+                      return `<td class="text-gray-400 italic">--</td>`;
+                  }
+                  
+                  const isToday = dayData.date === todayStr;
+                  const isLogged = dayData.logged;
+                  
+                  let className = 'text-gray-700';
+                  if (isToday) {
+                      className = 'font-bold bg-yellow-100 text-gray-900 border-2 border-yellow-400 rounded-lg shadow-sm';
+                  } else if (isLogged) {
+                      className = 'line-through text-green-600 bg-green-50/50';
+                  } else if (dayData.activity.toLowerCase().includes('marathon day')) {
+                      className = 'bg-red-500 text-white font-bold rounded-lg shadow-lg';
+                  }
+                  
+                  return `<td class="${className}" onclick="showView('log-workout', '${dayData.date}')" style="cursor: pointer;">
+                      <div class="text-sm">${dayData.activity}</div>
+                      <div class="text-xs text-gray-500 mt-1">${dayData.date.substring(5)}</div>
+                      </td>`;
+              }).join('');
+
+              return `
+                  <tr>
+                      <td class="font-bold text-blue-600 whitespace-nowrap">${weekKey}</td>
+                      ${dayCells}
+                  </tr>
+              `;
+          }).join('');
+          
+          content = `
+              <p class="text-lg text-gray-700 mb-6">Plan started on **${APP_STATE.startDate}**. (${Object.keys(APP_STATE.plan).length} total days)</p>
+
+              <div class="overflow-x-auto bg-white rounded-xl shadow-xl border border-gray-100 mb-6">
+                <table class="min-w-full plan-table divide-y divide-gray-200">
+                  <thead>
+                    <tr>
+                      <th class="sticky left-0">Week</th>
+                      <th>Mon</th><th>Tue</th><th>Wed</th><th>Thu</th><th>Fri</th><th>Sat</th><th>Sun</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${tableRows}
+                  </tbody>
+                </table>
+              </div>
+
+              <div class="flex justify-between items-center gap-4 mt-6">
+                <button onclick="clearPlan()" class="flex items-center gap-2 text-sm text-red-500 hover:text-red-700">
+                    <i data-lucide="trash-2" class="w-4 h-4"></i> Clear Plan
+                </button>
+                <button onclick="showView('dashboard', null, document.getElementById('nav-dashboard'))" class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-xl flex items-center gap-2">
+                  <i data-lucide="arrow-left"></i> Back to Dashboard
+                </button>
+              </div>
+          `;
+      }
+
+      document.getElementById('app').innerHTML = `
+        <div class="bg-white/90 backdrop-blur p-8 rounded-2xl shadow-xl w-full">
+          <h2 class="text-2xl font-bold mb-4 flex justify-center items-center gap-2">
+            <i data-lucide="calendar-days" class="w-6 h-6 text-orange-500"></i> Training Plan
+          </h2>
+          ${content}
+        </div>`;
+    }
+
+    // ---------------------------
+    // CSV Import Logic (No change, included for completeness)
+    // ---------------------------
+    function importPlan() {
+      const fileInput = document.getElementById('plan-upload');
+      const startDateInput = document.getElementById('start-date-input');
+      const file = fileInput.files[0];
+      const startDateStr = startDateInput.value;
+
+      if (!file) {
+        showModal('Error', 'Please select a CSV file to upload.');
+        return;
+      }
+      if (!startDateStr) {
+        showModal('Error', 'Please select a **Start Date** for your plan.');
+        return;
+      }
+      if (!file.name.endsWith('.csv')) {
+        showModal('Error', 'Invalid file type. Please upload a **.csv** file.');
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = function(event) {
+        try {
+          const csvText = event.target.result;
+          const newPlan = parseCSV(csvText, startDateStr);
+
+          if (Object.keys(newPlan).length === 0) {
+            showModal('Error', 'The file content is empty or could not be parsed. Ensure it follows the required format and the start date is correct.');
+            return;
+          }
+
+          APP_STATE.plan = newPlan;
+          APP_STATE.startDate = startDateStr;
+          localStorage.setItem('trainingPlan', JSON.stringify(newPlan));
+          localStorage.setItem('planStartDate', startDateStr);
+
+          showModal('Success! 🎉', `Training plan imported successfully, starting **${startDateStr}**, with **${Object.keys(newPlan).length}** days planned.`);
+          setTimeout(() => showView('dashboard', null, document.getElementById('nav-dashboard')), 1500);
+
+        } catch (e) {
+          showModal('Error', 'Failed to process the CSV file. Please check its structure and the start date.');
+          console.error('CSV processing error:', e);
+        }
+      };
+
+      reader.onerror = function() {
+        showModal('Error', 'Failed to read the file.');
+      };
+
+      reader.readAsText(file);
+    }
+
+    function parseCSV(csv, startDateStr) {
+      const plan = {};
+      const lines = csv.split('\n').filter(line => line.trim() !== '');
+      if (lines.length < 2) return plan; 
+
+      const header = lines[0].split(',').map(h => h.trim());
+      const activities = header.slice(1); 
+
+      let currentDay = new Date(startDateStr);
+      
+      const startDayOfWeekJS = currentDay.getDay(); 
+      const startDayCSVIndex = activities.findIndex(day => day.substring(0, 3) === DAY_NAMES_FULL[startDayOfWeekJS].substring(0, 3));
+      
+      if (startDayCSVIndex === -1) {
+          throw new Error('Could not match start date day of week to CSV columns.');
+      }
+      
+      let dayOffsetInPlan = startDayCSVIndex;
+      
+      for (let i = 1; i < lines.length; i++) {
+        const columns = lines[i].split(',').map(c => c.trim());
+        if (columns.length < 8) continue; 
+
+        const weekLabel = columns[0];
+
+        for (let j = 0; j < 7; j++) {
+          if (i === 1 && j < dayOffsetInPlan) continue;
+          
+          const activityIndex = j + 1; 
+          const activity = columns[activityIndex];
+          
+          const dateStr = formatDate(currentDay);
+
+          plan[dateStr] = { 
+            activity: activity, 
+            week: weekLabel 
+          };
+          
+          currentDay = addDays(currentDay, 1);
+        }
+        
+        dayOffsetInPlan = 0;
+      }
+      return plan;
+    }
+
+
+    // ---------------------------
+    // Import Plan View (No change, included for completeness)
+    // ---------------------------
+    function renderImportView() {
+      // Set the default to today's date
+      const today = formatDate(new Date()); 
+
+      document.getElementById('app').innerHTML = `
+        <div class="bg-white/90 backdrop-blur p-8 rounded-2xl shadow-xl text-center">
+          <h2 class="text-2xl font-bold mb-4 flex justify-center items-center gap-2">
+            <i data-lucide="upload-cloud" class="w-6 h-6 text-blue-600"></i> Import Training Plan
+          </h2>
+          <p class="text-gray-600 mb-4">Upload your marathon training plan CSV and choose a start date.</p>
+          
+          <p class="text-sm text-gray-500 mb-6 italic border p-3 rounded-lg text-left">
+            **Required CSV Header**: Week,Mon,Tue,Wed,Thu,Fri,Sat,Sun<br>
+            *Example Data Row*: Week 1,Rest,4 km easy,Strength,4×3 min run / 2 min walk,Rest,5 km long run,Cross-train...
+          </p>
+
+          <div class="flex flex-col gap-4 mb-6">
+            <label for="start-date-input" class="text-left font-semibold text-gray-700">1. Plan Start Date 🗓️</label>
+            <input type="date" id="start-date-input" value="${APP_STATE.startDate || today}"
+              class="border border-gray-300 rounded-xl py-2 px-4 w-full text-lg shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
+            
+            <label for="plan-upload-container" class="text-left font-semibold text-gray-700 mt-4">2. Upload CSV File</label>
+            <div class="file-input-container" id="plan-upload-container">
+              <input type="file" accept=".csv" id="plan-upload" onchange="document.getElementById('file-name').textContent = this.files[0] ? this.files[0].name : 'No file chosen'" />
+              <label for="plan-upload" class="file-input-label">
+                <i data-lucide="file-text" class="w-5 h-5"></i>
+                <span id="file-name">Choose File (e.g., myplan.csv)</span>
+              </label>
+            </div>
+          </div>
+          
+          <div class="flex flex-col md:flex-row gap-4">
+            <button onclick="importPlan()" 
+              class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-xl shadow transition-all duration-150 flex items-center justify-center gap-2">
+              <i data-lucide="chevrons-up"></i> Process & Import
+            </button>
+            <button onclick="showView('dashboard', null, document.getElementById('nav-dashboard'))" 
+              class="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 font-semibold py-3 rounded-xl transition-all duration-150 flex items-center justify-center gap-2">
+              <i data-lucide="x"></i> Cancel
+            </button>
+          </div>
+        </div>`;
+    }
+
+    // ---------------------------
+    // Init
+    // ---------------------------
+    function init() {
+      // Initialize with dashboard and set the active nav button
+      showView('dashboard', null, document.getElementById('nav-dashboard'));
+    }
+
+    window.onload = function () {
+      init();
+      lucide.createIcons();
+    };
   </script>
+
 </body>
 </html>
