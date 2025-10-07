@@ -6,7 +6,7 @@
   <title>Marathon Coach</title>
     <link rel="icon" type="image/png" sizes="32x32" href="marathon.png">
     <link rel="icon" type="image/png" sizes="16x16" href="marathon (1).png">
-    <link rel="apple-touch-icon" href="marathon (1).png">
+    <link rel="apple-touch-icon" href="Gemini_Generated_Image_utx4rzutx4rzutx4.png">
     <link rel="manifest" href="/site.webmanifest">
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
@@ -148,7 +148,38 @@
     const formatDate = d => new Date(d).toISOString().split('T')[0];
     const DAY_NAMES_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
     const DAY_NAMES_FULL = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-    
+
+    // Function to convert total minutes to HH:MM:SS string
+    function formatTime(totalMinutes) {
+        if (totalMinutes <= 0 || isNaN(totalMinutes)) return '00:00:00';
+        const totalSeconds = Math.round(totalMinutes * 60);
+        const hours = Math.floor(totalSeconds / 3600);
+        const minutes = Math.floor((totalSeconds % 3600) / 60);
+        const seconds = totalSeconds % 60;
+        
+        return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    }
+
+    // Function to convert HH:MM:SS string to total minutes (float)
+    function timeStringToMinutes(timeStr) {
+        if (!timeStr) return 0;
+        const parts = timeStr.split(':').map(Number);
+        let hours = 0, minutes = 0, seconds = 0;
+
+        if (parts.length === 3) {
+            [hours, minutes, seconds] = parts;
+        } else if (parts.length === 2) {
+            // Assume MM:SS if no hours were entered
+            [minutes, seconds] = parts;
+        } else if (parts.length === 1) {
+            // Assume SS if only one part
+            [seconds] = parts;
+        }
+
+        // Convert everything to total minutes
+        return hours * 60 + minutes + seconds / 60;
+    }
+
     // Date utility to add days
     const addDays = (date, days) => {
         const result = new Date(date);
@@ -310,6 +341,7 @@
         
         const planActivity = APP_STATE.plan[dateStr]?.activity || "No Plan Activity";
         const loggedData = APP_STATE.loggedWorkouts[dateStr] || {};
+        const loggedTimeStr = loggedData.time ? formatTime(loggedData.time) : ''; 
         const isEdit = Object.keys(loggedData).length > 0;
         
         const title = isEdit ? `Edit Log: ${dateStr}` : `   Log: ${dateStr}`;
@@ -325,14 +357,13 @@
                 <form id="log-form" onsubmit="event.preventDefault(); logWorkout('${dateStr}');">
                     <div class="grid grid-cols-2 gap-4 mb-4">
                         <label class="block">
-                            <span class="text-gray-700">Distance (km):</span>
+                            <span class="text-gray-700">Distance:</span>
                             <input type="number" step="0.01" id="log-distance" value="${loggedData.distance || ''}"
-                                class="mt-1 block w-full border border-gray-300 rounded-xl py-2 px-3 focus:ring-blue-500 focus:border-blue-500" />
+                                class="mt-1 block w-full border border-gray-300 rounded-xl py-2 px-3 focus:ring-blue-500 focus:border-blue-500" placeholder="km"/>
                         </label>
                         <label class="block">
-                            <span class="text-gray-700">Time (min):</span>
-                            <input type="number" step="1" id="log-time" value="${loggedData.time || ''}"
-                                class="mt-1 block w-full border border-gray-300 rounded-xl py-2 px-3 focus:ring-blue-500 focus:border-blue-500" />
+                            <span class="text-gray-700">Time:</span> <input type="text" id="log-time" value="${loggedTimeStr}" 
+                                class="mt-1 block w-full border border-gray-300 rounded-xl py-2 px-3 focus:ring-blue-500 focus:border-blue-500" placeholder="HH:MM:SS" />
                         </label>
                     </div>
                     
@@ -343,9 +374,9 @@
                                 class="mt-1 block w-full border border-gray-300 rounded-xl py-2 px-3 focus:ring-blue-500 focus:border-blue-500" />
                         </label>
                         <label class="block">
-                            <span class="text-gray-700">Strava Link (URL):</span>
+                            <span class="text-gray-700">Strava Link:</span>
                             <input type="text" id="log-strava" value="${loggedData.strava || ''}"
-                                class="mt-1 block w-full border border-gray-300 rounded-xl py-2 px-3 focus:ring-blue-500 focus:border-blue-500" />
+                                class="mt-1 block w-full border border-gray-300 rounded-xl py-2 px-3 focus:ring-blue-500 focus:border-blue-500" placeholder="URL"/>
                         </label>
                     </div>
 
@@ -378,10 +409,13 @@
      */
     function logWorkout(dateStr) {
         const distance = document.getElementById('log-distance').value;
-        const time = document.getElementById('log-time').value;
+        const timeStr = document.getElementById('log-time').value;
         const hr = document.getElementById('log-hr').value;
         const strava = document.getElementById('log-strava').value;
         const notes = document.getElementById('log-notes').value;
+
+        // New: Convert time string to minutes
+        const time = timeStringToMinutes(timeStr); 
 
         if (!distance && !time && !notes) {
              showModal('Validation Error', 'Please enter at least a distance, time, or notes to save the log.');
@@ -390,7 +424,7 @@
 
         APP_STATE.loggedWorkouts[dateStr] = {
             distance: distance ? parseFloat(distance) : 0,
-            time: time ? parseInt(time) : 0,
+            time: time,
             hr: hr ? parseInt(hr) : null,
             strava: strava.trim(),
             notes: notes.trim(),
@@ -433,6 +467,7 @@
 
         const distance = log.distance;
         const time = log.time;
+        const timeDisplay = formatTime(time);
         const hr = log.hr;
         const pace = calculatePace(distance, time);
         const stravaLink = log.strava;
@@ -441,7 +476,7 @@
         const statCard = (icon, label, value, unit, colorClass = 'text-gray-900') => `
             <div class="flex flex-col items-center p-4 bg-gray-50 rounded-xl shadow-inner border border-gray-100">
                 <i data-lucide="${icon}" class="w-6 h-6 text-blue-500 mb-1"></i>
-                <div class="text-3xl font-extrabold ${colorClass}">${value}</div>
+                <div class="text-2xl font-extrabold ${colorClass}">${value}</div>
                 <div class="text-sm text-gray-500 uppercase">${label} ${unit}</div>
             </div>
         `;
@@ -473,7 +508,7 @@
 
                 <div class="grid grid-cols-2 gap-4">
                     ${statCard('map-pin-house', 'Distance', distance.toFixed(1), 'km', 'text-green-600')}
-                    ${statCard('clock', 'Duration', time, 'min', 'text-indigo-600')}
+                    ${statCard('clock', 'Duration', timeDisplay, '', 'text-indigo-600')}
                     ${paceHtml}
                     ${hrHtml}
                 </div>
@@ -515,7 +550,8 @@
                 const planned = log.plannedActivity;
                 const distance = log.distance;
                 const time = log.time;
-                
+                const timeDisplay = formatTime(time);
+
                 // Determine the icon and color based on logged data
                 let progressIcon = '<i data-lucide="check-circle" class="w-5 h-5 text-green-500"></i>';
                 if (distance == 0 && time == 0 && log.notes === '') {
@@ -548,8 +584,7 @@
                             </div>
                             <div class="w-px bg-gray-200 mx-2"></div>
                             <div class="text-center">
-                                <span class="text-2xl font-extrabold text-orange-600">${time}</span>
-                                <span class="text-sm text-orange-600"> min</span>
+                                <span class="text-2xl font-extrabold text-orange-600">${timeDisplay.substring(0, 5)}</span>
                                 <div class="text-xs text-gray-500 uppercase mt-1">Duration</div>
                             </div>
                         </div>
