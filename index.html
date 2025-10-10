@@ -13,8 +13,8 @@
   <style>
     body {
       font-family: 'Inter', system-ui, sans-serif;
-      /* Add padding to the bottom of the body to prevent content from being hidden by the fixed nav */
-      padding-bottom: 5rem; /* Adjust based on nav height */
+      /* Adjust padding to the bottom of the body for the floating nav */
+      padding-bottom: 8rem; /* Adjusted for floating nav bar */
     }
     /* Custom styling for the file input */
     .file-input-container {
@@ -34,12 +34,11 @@
       color: #1f2937; /* text-gray-800 */
       border: 2px dashed #d1d5db; /* border-gray-300 */
       border-radius: 0.75rem; /* rounded-xl */
-      transition: background-color 0.15s;
     }
     .file-input-label:hover {
       background-color: #e5e7eb; /* hover:bg-gray-200 */
     }
-    #plan-upload {
+    #plan-upload, #log-upload {
       opacity: 0;
       position: absolute;
       top: 0;
@@ -68,23 +67,48 @@
     /* Log View Styles - New fitness look */
     .log-card {
         border-left: 5px solid #ef4444; /* red-500 for activity focus */
-        transition: transform 0.15s, box-shadow 0.15s;
     }
     .log-card:hover {
-        transform: translateY(-2px);
         box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
     }
-    /* Bottom Navigation Bar Styles */
-    #bottom-nav {
-      position: fixed;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      z-index: 50;
-    }
-    .nav-button.active {
-      color: #3b82f6; /* blue-500 */
-    }
+    
+/* --- Equal button layout (updated) --- */
+#bottom-nav {
+  position: fixed;
+  bottom: 1.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: 420px;
+  width: 90%;
+  z-index: 50;
+  border-radius: 9999px;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1),
+              0 4px 6px -4px rgba(0, 0, 0, 0.05);
+}
+#bottom-nav > div {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr); /* 4 equal buttons */
+  align-items: center;
+  width: 100%;
+}
+.nav-button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 4.5rem;
+  color: #6b7280; /* gray-500 */
+  border-radius: 9999px;
+}
+.nav-button:hover {
+  color: #2563eb;
+}
+.nav-button.active {
+  color: white;
+  background-color: #3b82f6;
+  border: 2px solid #2563eb;
+  box-shadow: 0 0 12px rgba(59, 130, 246, 0.5);
+}
   </style>
 </head>
 
@@ -99,7 +123,7 @@
 
   <main id="app" class="flex-grow p-6 md:p-10 max-w-3xl mx-auto w-full"></main>
 
-  <nav id="bottom-nav" class="bg-white/90 backdrop-blur shadow-2xl border-t border-gray-100">
+  <nav id="bottom-nav" class="bg-white/90 backdrop-blur shadow-2xl">
     <div class="flex justify-around items-center h-20 max-w-3xl mx-auto">
       <button id="nav-dashboard" onclick="showView('dashboard', null, this)" class="nav-button flex flex-col items-center p-2 text-gray-500 hover:text-blue-600 active">
         <i data-lucide="home" class="w-6 h-6"></i>
@@ -125,7 +149,7 @@
       <h2 id="modal-title" class="text-xl font-semibold mb-3 text-gray-900"></h2>
       <p id="modal-message" class="text-gray-600 mb-4"></p>
       <button id="modal-close-button" onclick="closeModal()"
-        class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded-xl shadow transition-all duration-150">
+        class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded-xl shadow">
         Close
       </button>
     </div>
@@ -189,6 +213,7 @@
     
     // Helper to calculate Pace in mm:ss format
     function calculatePace(distanceKm, timeMinutes) {
+        // BUG FIX 1: Ensure distance and time are non-zero before calculating pace
         if (distanceKm <= 0 || timeMinutes <= 0) return 'N/A';
         const paceDecimal = timeMinutes / distanceKm; // e.g., 5.5 min/km
         const minutes = Math.floor(paceDecimal);
@@ -208,46 +233,41 @@
         }
     }
 
-    // ---------------------------
-    // Navigation & View Switcher
-    // ---------------------------
     function setActiveNav(activeButton) {
         document.querySelectorAll('.nav-button').forEach(btn => {
-            btn.classList.remove('active', 'text-blue-600');
-            btn.classList.add('text-gray-500');
+            // 1. Remove 'active' state from all buttons.
+            btn.classList.remove('active');
+            // 2. Ensure non-active buttons are set to the base gray color.
+            btn.classList.add('text-gray-500'); 
         });
         if (activeButton) {
-            activeButton.classList.add('active', 'text-blue-600');
-            activeButton.classList.remove('text-gray-500');
+            // 3. Add 'active' state to the clicked button.
+            activeButton.classList.add('active');
+            // 4. Remove the base color, letting the CSS 'active' block handle all styling (color: white).
+            activeButton.classList.remove('text-gray-500'); 
         }
     }
 
+    /**
+     * Renders the specified view immediately (animations removed).
+     */
     function showView(view, date = null, navButton = null) {
       const app = document.getElementById('app');
-      app.classList.add("opacity-0");
+
+      if (navButton) setActiveNav(navButton);
       
-      // Handle setting active nav button
-      if (navButton) {
-        setActiveNav(navButton);
-      } else if (view === 'dashboard' || view === 'plan' || view === 'log' || view === 'import') {
-        setActiveNav(document.getElementById(`nav-${view}`));
-      } else {
-        // Clear active state for forms/sub-views
-        setActiveNav(null);
-      }
+      // Render new view content immediately
+      if (view === 'dashboard') renderDashboard();
+      else if (view === 'plan') renderPlanView();
+      else if (view === 'log') renderLogView();
+      else if (view === 'log-detail') renderLogDetailView(date);
+      else if (view === 'log-workout') renderLogWorkoutView(date);
+      else if (view === 'import') renderImportView();
 
-
-      setTimeout(() => {
-        if (view === 'dashboard') renderDashboard();
-        else if (view === 'plan') renderPlanView();
-        else if (view === 'log') renderLogView();
-        else if (view === 'log-detail') renderLogDetailView(date);
-        else if (view === 'log-workout') renderLogWorkoutView(date);
-        else if (view === 'import') renderImportView();
-        app.classList.remove("opacity-0");
-        lucide.createIcons(); // refresh icons
-      }, 150);
+      // Ensure icons are created after content is loaded
+      lucide.createIcons();
     }
+
 
     // ---------------------------
     // Modal Helpers
@@ -315,7 +335,7 @@
 
 
       document.getElementById('app').innerHTML = `
-        <div class="bg-white/90 backdrop-blur p-8 rounded-2xl shadow-xl text-center transition-all duration-300 hover:-translate-y-1">
+        <div class="bg-white/90 backdrop-blur p-8 rounded-2xl shadow-xl text-center">
           <h2 class="text-3xl font-bold text-gray-900 mb-2 flex justify-center items-center gap-2">
             <i data-lucide="sun" class="w-6 h-6 text-orange-500"></i>${weekday}
           </h2>
@@ -325,7 +345,7 @@
             <div class="flex flex-col items-center space-y-2">
               ${statusIcon}
               <p class="text-3xl font-extrabold text-gray-900">${planDetails.activity}</p>
-              <p class="text-sm text-gray-500 italic">${hasPlan ? "Let’s crush it today 💥" : "Import a plan to start training!"}</p>
+              <p class="text-sm text-gray-500 italic">${hasPlan ? "Let’s crush it today 🏃‍♀️" : "Import a plan to start training!"}</p>
             </div>
           </div>
           ${action}
@@ -341,7 +361,8 @@
         
         const planActivity = APP_STATE.plan[dateStr]?.activity || "No Plan Activity";
         const loggedData = APP_STATE.loggedWorkouts[dateStr] || {};
-        const loggedTimeStr = loggedData.time ? formatTime(loggedData.time) : ''; 
+        // BUG FIX 1: Ensure loggedData.time is a number for formatTime
+        const loggedTimeStr = loggedData.time ? formatTime(parseFloat(loggedData.time)) : ''; 
         const isEdit = Object.keys(loggedData).length > 0;
         
         const title = isEdit ? `Edit Log: ${dateStr}` : `   Log: ${dateStr}`;
@@ -387,16 +408,16 @@
                     </label>
                     
                     <div class="flex flex-col md:flex-row gap-4">
-                        <button type="submit" class="flex-1 bg-green-600 hover:bg-green-700 text-white font-semibold py-3 rounded-xl shadow transition-all duration-150 flex items-center justify-center gap-2">
+                        <button type="submit" class="flex-1 bg-green-600 hover:bg-green-700 text-white font-semibold py-3 rounded-xl shadow flex items-center justify-center gap-2">
                             <i data-lucide="save"></i> ${isEdit ? 'Update Log' : 'Save Log'}
                         </button>
                         ${isEdit ? 
-                            `<button type="button" onclick="deleteLog('${dateStr}')" class="md:w-auto bg-red-500 hover:bg-red-600 text-white font-semibold py-3 px-6 rounded-xl shadow transition-all duration-150 flex items-center justify-center gap-2">
+                            `<button type="button" onclick="deleteLog('${dateStr}')" class="md:w-auto bg-red-500 hover:bg-red-600 text-white font-semibold py-3 px-6 rounded-xl shadow flex items-center justify-center gap-2">
                                 <i data-lucide="trash-2"></i> Delete
                             </button>` : ''}
                     </div>
                     ${isEdit ? 
-                        `<button type="button" onclick="showView('log-detail', '${dateStr}')" class="w-full mt-4 bg-yellow-400 hover:bg-yellow-500 text-gray-900 font-semibold py-3 rounded-xl transition-all duration-150 flex items-center justify-center gap-2">
+                        `<button type="button" onclick="showView('log-detail', '${dateStr}')" class="w-full mt-4 bg-yellow-400 hover:bg-yellow-500 text-gray-900 font-semibold py-3 rounded-xl flex items-center justify-center gap-2">
                             <i data-lucide="eye"></i> View
                         </button>` : ''}
                 </form>
@@ -408,22 +429,25 @@
      * Saves the workout log data.
      */
     function logWorkout(dateStr) {
-        const distance = document.getElementById('log-distance').value;
+        const distanceVal = document.getElementById('log-distance').value;
         const timeStr = document.getElementById('log-time').value;
         const hr = document.getElementById('log-hr').value;
         const strava = document.getElementById('log-strava').value;
         const notes = document.getElementById('log-notes').value;
 
         // New: Convert time string to minutes
+        const distance = distanceVal ? parseFloat(distanceVal) : 0;
         const time = timeStringToMinutes(timeStr); 
 
-        if (!distance && !time && !notes) {
+        // BUG FIX 3: Changed validation to allow saving logs with only notes or only distance/time (even if 0)
+        // If distance=0, time=0, and notes="", do not save.
+        if (distance === 0 && time === 0 && !notes.trim()) {
              showModal('Validation Error', 'Please enter at least a distance, time, or notes to save the log.');
              return;
         }
 
         APP_STATE.loggedWorkouts[dateStr] = {
-            distance: distance ? parseFloat(distance) : 0,
+            distance: distance,
             time: time,
             hr: hr ? parseInt(hr) : null,
             strava: strava.trim(),
@@ -436,7 +460,7 @@
         // UPDATED strong tags
         showModal('Success!', `Workout log for <strong>${dateStr}</strong> saved.`);
         // After save, show the new detail view
-        setTimeout(() => showView('log-detail', dateStr), 1000); 
+        showView('log-detail', dateStr); 
     }
     
     /**
@@ -448,7 +472,7 @@
             localStorage.setItem('loggedWorkouts', JSON.stringify(APP_STATE.loggedWorkouts));
             // UPDATED strong tags
             // After deleting, go to the general log view
-            setTimeout(() => showView('log', null, document.getElementById('nav-log')), 700); 
+            showView('log', null, document.getElementById('nav-log')); 
         }
     }
 
@@ -465,11 +489,14 @@
             return;
         }
 
-        const distance = log.distance;
-        const time = log.time;
+        const distance = parseFloat(log.distance);
+        const time = parseFloat(log.time);
         const timeDisplay = formatTime(time);
         const hr = log.hr;
+        
+        // BUG FIX 1: Ensure distance and time are checked for valid calculation
         const pace = calculatePace(distance, time);
+        
         const stravaLink = log.strava;
         const planned = log.plannedActivity;
 
@@ -481,7 +508,11 @@
             </div>
         `;
         
-        const paceHtml = statCard('gauge', 'Pace', pace.split(' ')[0], pace.split(' ')[1] || '', 'text-orange-600');
+        // BUG FIX 1: Split pace string for display
+        const paceValue = pace === 'N/A' ? 'N/A' : pace.split(' ')[0];
+        const paceUnit = pace === 'N/A' ? '' : pace.split(' ')[1];
+        
+        const paceHtml = statCard('gauge', 'Pace', paceValue, paceUnit, 'text-orange-600');
         const hrHtml = statCard('heart-plus', 'Average', hr || 'N/A', 'BPM', hr ? 'text-red-500' : 'text-gray-400');
         
         const notesHtml = log.notes ? `
@@ -492,11 +523,11 @@
         ` : '';
 
         const stravaHtml = stravaLink ? `
-            <a href="${stravaLink}" target="_blank" class="flex items-center justify-center gap-2 w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold py-3 rounded-xl shadow transition-all duration-150 mt-6">
+            <a href="${stravaLink}" target="_blank" class="flex items-center justify-center gap-2 w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold py-3 rounded-xl shadow mt-6">
                 <i data-lucide="external-link" class="w-5 h-5"></i> View on Strava
             </a>
         ` : `
-            <button onclick="showView('log-workout', '${dateStr}')" class="flex items-center justify-center gap-2 w-full bg-gray-300 text-gray-700 font-semibold py-3 rounded-xl transition-all duration-150 mt-6">
+            <button onclick="showView('log-workout', '${dateStr}')" class="flex items-center justify-center gap-2 w-full bg-gray-300 text-gray-700 font-semibold py-3 rounded-xl mt-6">
                 <i data-lucide="link"></i> Add Strava Link
             </button>
         `;
@@ -517,7 +548,7 @@
 
                 <div class="flex flex-col gap-4 mt-8">
                     ${stravaHtml}
-                    <button onclick="showView('log-workout', '${dateStr}')" class="flex items-center justify-center gap-2 w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-xl shadow-lg transition-all duration-150">
+                    <button onclick="showView('log-workout', '${dateStr}')" class="flex items-center justify-center gap-2 w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-xl shadow-lg">
                         <i data-lucide="edit-3"></i> Edit Log Data
                     </button>
                 </div>
@@ -548,8 +579,9 @@
             const listItems = logDates.map(dateStr => {
                 const log = logs[dateStr];
                 const planned = log.plannedActivity;
-                const distance = log.distance;
-                const time = log.time;
+                // BUG FIX 1: Ensure log properties are treated as numbers
+                const distance = parseFloat(log.distance);
+                const time = parseFloat(log.time);
                 const timeDisplay = formatTime(time);
 
                 // Determine the icon and color based on logged data
@@ -666,14 +698,14 @@
                   const isToday = dayData.date === todayStr;
                   const isLogged = dayData.logged;
                   
-                  let className = 'text-gray-700 hover:bg-gray-100 transition-colors';
+                  let className = 'text-gray-700 hover:bg-gray-100';
                   if (isToday) {
-                      className = 'font-bold bg-yellow-100 text-gray-900 border-2 border-yellow-400 rounded-lg shadow-sm hover:bg-yellow-200 transition-colors';
+                      className = 'font-bold bg-yellow-100 text-gray-900 border-2 border-yellow-400 rounded-lg shadow-sm hover:bg-yellow-200';
                   } else if (isLogged) {
                       // Click opens Log Detail View if already logged
-                      className = 'line-through text-green-600 bg-green-50/50 hover:bg-green-100/70 transition-colors';
+                      className = 'line-through text-green-600 bg-green-50/50 hover:bg-green-100/70';
                   } else if (dayData.activity.toLowerCase().includes('marathon day')) {
-                      className = 'bg-red-500 text-white font-bold rounded-lg shadow-lg hover:bg-red-600 transition-colors';
+                      className = 'bg-red-500 text-white font-bold rounded-lg shadow-lg hover:bg-red-600';
                   }
                   
                   // **Click opens the Log Workout Form directly for any day**
@@ -770,11 +802,11 @@
           localStorage.setItem('planStartDate', startDateStr);
 
           // UPDATED strong tags
-          showModal('Success! 🎉', `Training plan imported successfully, starting <strong>${startDateStr}</strong>, with <strong>${Object.keys(newPlan).length}</strong> days planned.`);
-          setTimeout(() => showView('dashboard', null, document.getElementById('nav-dashboard')), 1500);
+          showModal('Success! 🏃‍♀️', `Training plan imported successfully, starting <strong>${startDateStr}</strong>, with <strong>${Object.keys(newPlan).length}</strong> days planned.`);
+          showView('dashboard', null, document.getElementById('nav-dashboard'));
 
         } catch (e) {
-          showModal('Error', 'Failed to process the CSV file. Please check its structure and the start date.');
+          showModal('Error', 'Failed to process the CSV file. Please check its structure and the start date. Error: ' + e.message); // Added error message
           console.error('CSV processing error:', e);
         }
       };
@@ -802,7 +834,6 @@
       
       // The CSV data columns are Mon (index 1) to Sun (index 7).
       // We need to skip the first (startDayIndex - 1) activities of the first CSV week
-      // to align the first activity with the given start date.
       let daysToSkipInFirstRow = startDayIndex - 1;
       
       for (let i = 1; i < lines.length; i++) {
@@ -814,9 +845,11 @@
         // Process columns 1 through 7 (Mon through Sun)
         for (let j = 1; j < 8; j++) {
           
-          // Only skip activities in the first data row (i=1) if the skip count is > 0
+          // BUG FIX 2: Correctly align the first activity with the start date.
           if (i === 1 && daysToSkipInFirstRow > 0) {
             daysToSkipInFirstRow--;
+            // Advance the calendar day for the skipped activity
+            currentDay = addDays(currentDay, 1); 
             continue;
           }
           
@@ -834,10 +867,152 @@
       }
       return plan;
     }
+    
+    // ---------------------------
+    // NEW: Log Data Export/Import Logic
+    // ---------------------------
+    
+    /**
+     * Exports the logged workout data to a CSV file.
+     */
+    function exportLogData() {
+        const logs = APP_STATE.loggedWorkouts;
+        const logDates = Object.keys(logs).sort(); // Sort chronologically
+        
+        if (logDates.length === 0) {
+            showModal('Export Error', 'No workout data has been logged to export.');
+            return;
+        }
+
+        const headers = ["date", "plannedActivity", "distance_km", "time_min", "hr_avg_bpm", "strava_link", "notes"];
+        let csv = headers.join(',') + '\n';
+
+        logDates.forEach(dateStr => {
+            const log = logs[dateStr];
+            // BUG FIX 1: Ensure log.distance and log.time are parsed as floats before defaulting to 0
+            const row = [
+                `"${log.date}"`,
+                `"${log.plannedActivity.replace(/"/g, '""')}"`, // Escape double quotes
+                parseFloat(log.distance) || 0,
+                parseFloat(log.time) || 0,
+                log.hr || '',
+                `"${log.strava.replace(/"/g, '""')}"`,
+                `"${log.notes.replace(/"/g, '""')}"`
+            ].join(',');
+            csv += row + '\n';
+        });
+
+        // Create a temporary link and trigger the download
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement("a");
+        const url = URL.createObjectURL(blob);
+        link.setAttribute("href", url);
+        link.setAttribute("download", `marathon_coach_log_${formatDate(new Date())}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        showModal('Export Complete', `Successfully exported <strong>${logDates.length}</strong> logged workouts.`);
+    }
+
+    /**
+     * Imports logged workout data from a CSV file.
+     */
+    function importLogData() {
+        const fileInput = document.getElementById('log-upload');
+        const file = fileInput.files[0];
+
+        if (!file) {
+            showModal('Error', 'Please select a CSV file to upload.');
+            return;
+        }
+        if (!file.name.endsWith('.csv')) {
+            showModal('Error', 'Invalid file type. Please upload a <strong>.csv</strong> file.');
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            try {
+                const csvText = event.target.result;
+                const importedLogs = parseLogCSV(csvText);
+
+                if (Object.keys(importedLogs).length === 0) {
+                    showModal('Error', 'The file content is empty or could not be parsed. Check the required format.');
+                    return;
+                }
+                
+                // Merge new logs into existing state, overwriting existing dates
+                APP_STATE.loggedWorkouts = { ...APP_STATE.loggedWorkouts, ...importedLogs };
+                localStorage.setItem('loggedWorkouts', JSON.stringify(APP_STATE.loggedWorkouts));
+
+                showModal('Success! 🏃‍♀️', `Imported <strong>${Object.keys(importedLogs).length}</strong> workout logs. Total logs: <strong>${Object.keys(APP_STATE.loggedWorkouts).length}</strong>.`);
+                // Reset file input label text
+                document.getElementById('log-file-name').textContent = 'Choose File (e.g., mylogs.csv)';
+                fileInput.value = null;
+
+            } catch (e) {
+                showModal('Error', 'Failed to process the CSV file. Please check its structure.');
+                console.error('Log CSV processing error:', e);
+            }
+        };
+
+        reader.onerror = function() {
+            showModal('Error', 'Failed to read the file.');
+        };
+
+        reader.readAsText(file);
+    }
+
+    /**
+     * Parses the log CSV data.
+     */
+    function parseLogCSV(csv) {
+        const logs = {};
+        const lines = csv.split('\n').filter(line => line.trim() !== '');
+        if (lines.length < 2) return logs;
+
+        // Simple CSV parser that handles quoted fields (for notes/strava)
+        // This is a basic implementation and assumes a fixed, strict header order.
+        const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+        const expectedHeaders = ["date", "plannedActivity", "distance_km", "time_min", "hr_avg_bpm", "strava_link", "notes"];
+
+        if (headers.length !== expectedHeaders.length || !headers.every((h, i) => h === expectedHeaders[i])) {
+            throw new Error('CSV headers do not match the expected format.');
+        }
+
+        // Regex to split a CSV line while respecting quoted fields
+        const csvRegex = /(".*?"|[^",]+)(?=\s*,|\s*$)/g;
+
+        for (let i = 1; i < lines.length; i++) {
+            // Find all columns, removing surrounding quotes and un-escaping internal quotes
+            const columns = [...lines[i].matchAll(csvRegex)].map(match => 
+                match[0].trim().replace(/^"|"$/g, '').replace(/""/g, '"')
+            );
+            
+            if (columns.length !== expectedHeaders.length) continue; 
+
+            const dateStr = columns[0];
+            // Basic date format validation
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) continue; 
+
+            logs[dateStr] = {
+                date: dateStr,
+                plannedActivity: columns[1] || 'N/A',
+                distance: parseFloat(columns[2]) || 0,
+                time: parseFloat(columns[3]) || 0,
+                hr: columns[4] ? parseInt(columns[4]) : null,
+                strava: columns[5] || '',
+                notes: columns[6] || ''
+            };
+        }
+        return logs;
+    }
 
 
     // ---------------------------
-    // Import Plan View
+    // Import Plan View (UPDATED)
     // ---------------------------
     function renderImportView() {
       // Set the default to today's date
@@ -845,41 +1020,75 @@
 
       document.getElementById('app').innerHTML = `
         <div class="bg-white/90 backdrop-blur p-8 rounded-2xl shadow-xl text-center">
-          <h2 class="text-2xl font-bold mb-4 flex justify-center items-center gap-2">
-            <i data-lucide="upload-cloud" class="w-6 h-6 text-blue-600"></i> Import Training Plan
+          <h2 class="text-2xl font-bold mb-6 flex justify-center items-center gap-2">
+            <i data-lucide="upload-cloud" class="w-6 h-6 text-blue-600"></i> Import/Export Data
           </h2>
-          <p class="text-gray-600 mb-4">Upload your marathon training plan CSV and choose a start date.</p>
           
-          <p class="text-sm text-gray-500 mb-6 italic border p-3 rounded-lg text-left">
-            <strong>Required CSV Header</strong>: Week,Mon,Tue,Wed,Thu,Fri,Sat,Sun<br>
-            *Example Data Row*: Week 1,Rest,4 km easy,Strength,4×3 min run / 2 min walk,Rest,5 km long run,Cross-train...
-          </p>
+          <div class="p-6 border border-blue-200 rounded-xl bg-blue-50/50 mb-6 text-left">
+            <h3 class="text-xl font-bold text-blue-800 mb-4 flex items-center gap-2">
+                <i data-lucide="calendar-check" class="w-5 h-5"></i> Training Plan CSV
+            </h3>
+            <p class="text-sm text-gray-700 mb-4">
+                Upload your marathon training plan CSV and choose a start date.
+            </p>
+            <p class="text-xs text-gray-500 mb-4 italic p-2 border border-gray-200 rounded-md">
+                <strong>Required CSV Header</strong>: Week,Mon,Tue,Wed,Thu,Fri,Sat,Sun
+            </p>
 
-          <div class="flex flex-col gap-4 mb-6">
-            <label for="start-date-input" class="text-left font-semibold text-gray-700">1. Plan Start Date 🗓️</label>
+            <label for="start-date-input" class="block font-semibold text-gray-700">1. Plan Start Date 📅</label>
             <input type="date" id="start-date-input" value="${APP_STATE.startDate || today}"
-              class="border border-gray-300 rounded-xl py-2 px-4 w-full text-lg shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
+              class="mt-1 border border-gray-300 rounded-xl py-2 px-4 w-full text-lg shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
             
-            <label for="plan-upload-container" class="text-left font-semibold text-gray-700 mt-4">2. Upload CSV File</label>
-            <div class="file-input-container" id="plan-upload-container">
-              <input type="file" accept=".csv" id="plan-upload" onchange="document.getElementById('file-name').textContent = this.files[0] ? this.files[0].name : 'No file chosen'" />
+            <label for="plan-upload-container" class="block font-semibold text-gray-700 mt-4">2. Upload Plan CSV</label>
+            <div class="file-input-container mt-1" id="plan-upload-container">
+              <input type="file" accept=".csv" id="plan-upload" onchange="document.getElementById('file-name').textContent = this.files[0] ? this.files[0].name : 'Choose File (e.g., myplan.csv)'" />
               <label for="plan-upload" class="file-input-label">
                 <i data-lucide="file-text" class="w-5 h-5"></i>
-                <span id="file-name">Choose File (e.g., myplan.csv)</span>
+                <span id="file-name">${APP_STATE.plan ? 'Plan loaded' : 'Choose File (e.g., myplan.csv)'}</span>
               </label>
             </div>
+            
+            <button onclick="importPlan()" 
+              class="w-full mt-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-xl shadow flex items-center justify-center gap-2">
+              <i data-lucide="chevrons-up"></i> Process & Import Plan
+            </button>
           </div>
           
-          <div class="flex flex-col md:flex-row gap-4">
-            <button onclick="importPlan()" 
-              class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-xl shadow transition-all duration-150 flex items-center justify-center gap-2">
-              <i data-lucide="chevrons-up"></i> Process & Import
-            </button>
-            <button onclick="showView('dashboard', null, document.getElementById('nav-dashboard'))" 
-              class="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 font-semibold py-3 rounded-xl transition-all duration-150 flex items-center justify-center gap-2">
-              <i data-lucide="x"></i> Cancel
-            </button>
+          <div class="p-6 border border-green-200 rounded-xl bg-green-50/50 text-left">
+            <h3 class="text-xl font-bold text-green-800 mb-4 flex items-center gap-2">
+                <i data-lucide="list-checks" class="w-5 h-5"></i> Workout Log Data
+            </h3>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <p class="text-sm text-gray-700 mb-2 font-medium">Export all logged workouts for backup.</p>
+                    <button onclick="exportLogData()" 
+                        class="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 rounded-xl shadow flex items-center justify-center gap-2">
+                        <i data-lucide="download"></i> Export Log CSV
+                    </button>
+                </div>
+                
+                <div>
+                    <p class="text-sm text-gray-700 mb-2 font-medium">Import logs, overwriting data for matching dates.</p>
+                    <div class="file-input-container mb-2">
+                      <input type="file" accept=".csv" id="log-upload" onchange="document.getElementById('log-file-name').textContent = this.files[0] ? this.files[0].name : 'Choose File (e.g., mylogs.csv)'" />
+                      <label for="log-upload" class="file-input-label bg-white border-green-300">
+                        <i data-lucide="file-up" class="w-5 h-5 text-green-600"></i>
+                        <span id="log-file-name" class="text-gray-700">Choose File (e.g., mylogs.csv)</span>
+                      </label>
+                    </div>
+                    <button onclick="importLogData()" 
+                        class="w-full bg-green-800 hover:bg-green-900 text-white font-semibold py-3 rounded-xl shadow flex items-center justify-center gap-2">
+                        <i data-lucide="upload"></i> Import Log Data
+                    </button>
+                </div>
+            </div>
           </div>
+
+          <button onclick="showView('dashboard', null, document.getElementById('nav-dashboard'))" 
+            class="w-full mt-6 bg-gray-300 hover:bg-gray-400 text-gray-700 font-semibold py-3 rounded-xl flex items-center justify-center gap-2">
+            <i data-lucide="x"></i> Cancel/Back to Dashboard
+          </button>
         </div>`;
     }
 
