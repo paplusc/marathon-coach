@@ -118,7 +118,7 @@
 
   <main id="app" class="flex-grow p-6 md:p-10 max-w-3xl mx-auto w-full"></main>
 
-  <nav id="bottom-nav" class="bg-white/90 backdrop-blur shadow-2xl">
+  <nav id="bottom-nav" class="bg-white/20 backdrop-blur shadow-2xl">
     <div class="flex justify-around items-center h-20 max-w-3xl mx-auto">
 <button id="nav-wod" onclick="showView('wod', null, this)" class="nav-button flex flex-col items-center p-2 hover:text-blue-600 active">        <i data-lucide="home" class="w-6 h-6"></i>
         <span class="text-xs mt-1">WOD</span>
@@ -322,8 +322,6 @@ function setActiveNav(activeButton) {
         document.getElementById('complete-modal').classList.add('hidden');
     }
     
-    // REGEX for simple Strava link validation
-    const stravaRegex = /^(https?:\/\/)?(www\.)?strava\.com\/activities\/\d+$/i;
 
     /**
      * Handles the form submission for marking a workout complete or saving/updating a Strava link.
@@ -331,12 +329,6 @@ function setActiveNav(activeButton) {
     function completeWorkout(dateStr) {
         const stravaLinkInput = document.getElementById('strava-link-input');
         let stravaLink = stravaLinkInput ? stravaLinkInput.value.trim() : (APP_STATE.loggedWorkouts[dateStr]?.strava || '');
-        
-        // --- Validation for Strava Link ---
-        if (stravaLink && !stravaRegex.test(stravaLink)) {
-            showModal('Invalid Strava Link', 'Please enter a valid Strava activity URL (e.g., https://www.strava.com/activities/123456789).');
-            return; // Stop the function if link is invalid
-        }
         
         APP_STATE.loggedWorkouts[dateStr] = {
             completed: true,
@@ -488,7 +480,7 @@ function setActiveNav(activeButton) {
             // Helper: Create the Strava Link input field
             const linkInputHTML = `<label class="block mb-4 text-left">
                         <span class="text-gray-700 font-medium">Strava Link (Optional):</span>
-                        <input type="url" id="strava-link-input" placeholder="e.g., https://www.strava.com/activities/..."
+                        <input type="url" id="strava-link-input" placeholder="e.g., https://www.strava.com/..."
                             class="mt-1 block w-full border border-gray-300 rounded-xl py-2 px-3 focus:ring-blue-500 focus:border-blue-500" value="${stravaLink}" />
                     </label>`;
 
